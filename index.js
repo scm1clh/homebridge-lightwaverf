@@ -90,6 +90,7 @@ function LightWaveRFAccessory(log, device, api) {
   this.isLight = (device.deviceType.indexOf('L') > -1) || this.isDimmer;
   this.isSwitch = (device.deviceType.indexOf('S') > -1);
   this.isOutlet = (device.deviceType.indexOf('O') > -1);
+  this.isMood = (device.deviceType.indexOf('M') > -1);
   this.isGarageDoor = (device.deviceType.indexOf('G') > -1);
   this.isWindowCovering = (device.deviceType.indexOf('WC') > -1);
   this.status = 0; // 0 = off, else on / percentage
@@ -215,17 +216,26 @@ LightWaveRFAccessory.prototype = {
                     this.api.turnDeviceOff(this.roomId,this.deviceId,callback);
                 }
                 else this.api.setDeviceDim(this.roomId,this.deviceId,this.previousPercentage,callback);
-                //this.status = this.previousPercentage;
-            } else {
-                this.api.turnDeviceOn(this.roomId,this.deviceId,callback);
-                this.status = 100;
             }
+	    else {
+		if (this.isMood) {
+		    this.api.turnMoodOn(this.roomId,this.deviceId,callback);
+		}
+		else {
+		    this.api.turnDeviceOn(this.roomId,this.deviceId,callback);
+		}
+                this.status = 100;
+	    }
         }
-        else {
-          //this.previousPercentage = 0;
-          this.api.turnDeviceOff(this.roomId,this.deviceId,callback);
-          this.status = 0;
-        }
+	else {
+	    if (this.isMood) {
+		this.api.turnRoomOff(this.roomId,callback);
+	    }
+	    else {
+		this.api.turnDeviceOff(this.roomId,this.deviceId,callback);
+	    }
+	    this.status = 0;
+	}
         break;
       case 'brightness':
         this.previousPercentage = value;
@@ -390,14 +400,12 @@ LightWaveRFAccessory.prototype = {
       if (newValue != undefined) {
         callback(null, newValue);
       } else {
-        //this.log("Device " + that.device.name + " does not support reading characteristic " + characteristic);
         //  callback(Error("Device " + that.device.name + " does not support reading characteristic " + characteristic) );
         callback(1,0);
       }
 
       callback = null;
 		
-      //this.log("Get " + that.device.name + ", characteristic: " + characteristic + ", value: " + value + ".");
     }//.bind(this));
   },
 
@@ -448,7 +456,7 @@ LightWaveRFAccessory.prototype = {
         
         this.lightbulbService = lightbulbService;
     }
-    else if(this.isSwitch) {
+    else if(this.isSwitch || this.isMood) {
         // Use HomeKit types defined in HAP node JS
         var switchService = new Service.Switch(this.name);
         
